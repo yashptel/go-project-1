@@ -29,7 +29,6 @@ go run main.go
 
 ## Structure
 ```
-├── app
 └── main.go
 ```
 
