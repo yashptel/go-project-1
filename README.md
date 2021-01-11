@@ -46,5 +46,5 @@ go run main.go
 ## Todo
 
 - [x] Support basic REST APIs.
-- [ ] Get all employees with a single request.
+- [ ] Get all employees with a single GET request.
 
