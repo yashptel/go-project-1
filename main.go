@@ -115,52 +115,88 @@ func struct2json(c Company) string {
 	return string(result)
 }
 
+func handleGet(db *sql.DB, id int) *sql.Rows {
+	sqlStatement := ``
+
+	if id == -1 {
+		sqlStatement = `SELECT * FROM COMPANY;`
+		rows, _ := db.Query(sqlStatement)
+		return rows
+	} else if id > -1 {
+		sqlStatement = `SELECT * FROM COMPANY WHERE id=$1;;`
+		rows, _ := db.Query(sqlStatement, id)
+		return rows
+	} else {
+		var rows *sql.Rows
+		return rows
+	}
+}
+
 func get(w http.ResponseWriter, r *http.Request) {
 
 	db := dbConn()
 
-	var c Company
-	c.Id = String2int(strings.Split(r.URL.Path, "/")[2])
-
-	sqlStatement := `SELECT * FROM COMPANY WHERE id=$1;`
-	sqlStatement = `SELECT * FROM COMPANY;`
-
-	row, err := db.Query(sqlStatement, c.Id)
-	if err != nil {
-		// handle this error better than this
-		panic(err)
+	// var c Company
+	id := 0
+	if strings.Split(r.URL.Path, "/")[2] == "" {
+		id = -1
+	} else {
+		// c.Id = String2int(strings.Split(r.URL.Path, "/")[2])
+		id, _ = strconv.Atoi(strings.Split(r.URL.Path, "/")[2])
 	}
-	defer rows.Close()
-	var cArr []Company
-	i := 0
-	for rows.Next() {
 
-		err = rows.Scan(&c[i].Id, &c[i].Name, &c[i].Age, &c[i].Address, &c[i].Salary, &c[i].JoinDate)
+	if id < -1 {
+		w.Write([]byte(`{"message": "error"}`))
+		defer db.Close()
+		return
+	}
+	rows := handleGet(db, id)
+
+	// if err != nil {
+	// 	// handle this error better than this
+	// 	panic(err)
+	// }
+	// defer rows.Close()
+	var cArr []Company
+	var c Company
+	for rows.Next() {
+		var tmp sql.NullString
+		err := rows.Scan(&c.Id, &c.Name, &c.Age, &c.Address, &c.Salary, &tmp)
 		if err != nil {
 			// handle this error
 			panic(err)
 		}
-		i++
-	}
-	// get any error encountered during iteration
-	err = rows.Err()
-	if err != nil {
-		panic(err)
-	}
-
-	switch err := row.Scan(&c.Id, &c.Name, &c.Age, &c.Address, &c.Salary, &c.JoinDate); err {
-
-	case sql.ErrNoRows:
-		fmt.Println("No rows were returned!")
-		w.Write([]byte(`{"message": "error"}`))
-
-	case nil:
 		c.Address = strings.Trim(c.Address, " ")
-		w.Write([]byte(struct2json(c)))
-
-	default:
-		panic(err)
+		c.JoinDate = tmp.String
+		cArr = append(cArr, c)
 	}
+
+	fmt.Println(cArr)
+	// get any error encountered during iteration
+	// err = rows.Err()
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// switch err := row.Scan(&c.Id, &c.Name, &c.Age, &c.Address, &c.Salary, &c.JoinDate); err {
+
+	// case sql.ErrNoRows:
+	// 	fmt.Println("No rows were returned!")
+	// 	w.Write([]byte(`{"message": "error"}`))
+
+	// case nil:
+	// 	c.Address = strings.Trim(c.Address, " ")
+	if len(cArr) == 1 {
+		result, _ := json.Marshal(cArr[0])
+		w.Write([]byte(result))
+	} else {
+		result, _ := json.Marshal(cArr)
+		w.Write([]byte(result))
+	}
+
+	// default:
+	// 	panic(err)
+	// }
 
 	defer db.Close()
 }
